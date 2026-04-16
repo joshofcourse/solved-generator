@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Word Trail</title>
+<style>
+  @font-face {
+    font-family: 'SelectaBlack';
+    src: url('./SelectaTrialUnlicensed-Black.otf') format('opentype');
+  }
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    background: #0a0a0a;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    color: #fff;
+  }
+
+  body { display: flex; flex-direction: row; }
+
+  #sidebar {
+    flex-shrink: 0;
+    width: 200px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    padding: 28px 24px 28px;
+    background: rgba(10, 10, 10, 0.98);
+    border-right: 1px solid #333;
+    overflow-y: auto;
+  }
+
+  #canvas-wrap {
+    flex: 1;
+    position: relative;
+    min-width: 0;
+    cursor: crosshair;
+  }
+
+  canvas { display: block; width: 100%; height: 100%; }
+
+  #hint {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    color: #1e1e1e;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    transition: opacity 0.3s;
+  }
+
+  .field { display: flex; flex-direction: column; gap: 10px; }
+
+  .field label {
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: #666;
+  }
+
+  #text-input {
+    background: none;
+    border: none;
+    border-bottom: 1px solid #3a3a3a;
+    color: #e0e0e0;
+    font-size: 15px;
+    padding: 3px 0 5px;
+    outline: none;
+    width: 100%;
+    caret-color: #888;
+    transition: border-color 0.15s;
+    letter-spacing: 0.02em;
+  }
+  #text-input:focus { border-bottom-color: #666; }
+  #text-input::placeholder { color: #383838; }
+
+  /* Mode toggle buttons */
+  .mode-options { display: flex; flex-direction: column; gap: 6px; }
+
+  .mode-btn {
+    background: none;
+    border: 1px solid #333;
+    color: #888;
+    padding: 9px 12px;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 2px;
+    font-family: inherit;
+    text-align: left;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+    line-height: 1.4;
+  }
+  .mode-btn:hover { border-color: #555; color: #bbb; }
+  .mode-btn.active { border-color: #888; color: #e0e0e0; background: rgba(255,255,255,0.05); }
+  .mode-btn .mode-label { display: block; font-size: 11px; color: inherit; }
+  .mode-btn .mode-desc { display: block; font-size: 9px; color: #555; margin-top: 3px; letter-spacing: 0.06em; }
+  .mode-btn.active .mode-desc { color: #888; }
+
+  /* Font options */
+  .font-options { display: flex; flex-direction: column; gap: 5px; }
+  .font-btn {
+    background: none;
+    border: 1px solid #333;
+    color: #888;
+    padding: 8px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    border-radius: 2px;
+    text-align: left;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+  }
+  .font-btn:hover { border-color: #555; color: #bbb; }
+  .font-btn.active { border-color: #888; color: #e0e0e0; background: rgba(255,255,255,0.05); }
+
+  /* Highlight row hidden by default, shown only in solved mode */
+  #highlight-row { display: none; }
+  body.mode-solved #highlight-row { display: flex; }
+
+  /* Rotate + Curve rows hidden by default, shown only in stampWord mode */
+  #rotate-field, #curve-field { display: none; }
+  body.mode-stampWord #rotate-field,
+  body.mode-stampWord #curve-field { display: flex; }
+
+  /* When Random is on, hide the manual arrow controls */
+  #rotate-field.is-random .rotate-controls,
+  #curve-field.is-random  .rotate-controls { display: none; }
+
+  .rotate-controls { display: flex; align-items: center; gap: 10px; }
+  .rotate-btn {
+    background: none;
+    border: 1px solid #333;
+    color: #888;
+    padding: 8px 0;
+    flex: 1;
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 2px;
+    font-family: inherit;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+  }
+  .rotate-btn:hover { border-color: #666; color: #ddd; }
+  .rotate-btn:active { background: rgba(255,255,255,0.05); }
+  .rotate-val {
+    font-size: 11px;
+    color: #666;
+    min-width: 36px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.04em;
+  }
+
+  .range-wrap { display: flex; align-items: center; gap: 11px; }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 1px;
+    background: #3a3a3a;
+    outline: none;
+    border-radius: 1px;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: #c0c0c0;
+    transition: transform 0.1s, background 0.1s;
+  }
+  input[type=range]::-webkit-slider-thumb:hover {
+    background: #fff;
+    transform: scale(1.15);
+  }
+
+  .range-val {
+    font-size: 11px;
+    color: #666;
+    min-width: 24px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.04em;
+  }
+
+  .btn-group { display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
+
+  .btn {
+    background: none;
+    border: 1px solid #333;
+    color: #777;
+    padding: 9px 12px;
+    font-size: 9px;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 2px;
+    font-family: inherit;
+    text-align: left;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .btn:hover { border-color: #666; color: #bbb; }
+  .btn.active { border-color: #888; color: #ddd; background: rgba(255,255,255,0.05); }
+
+  /* Color pickers */
+  .color-row { display: flex; flex-direction: column; gap: 8px; }
+
+  .color-swatch-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .color-swatch-wrap span {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #888;
+    flex: 1;
+  }
+
+  input[type=color] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 28px;
+    height: 28px;
+    border: 1px solid #444;
+    border-radius: 3px;
+    padding: 2px;
+    background: none;
+    cursor: pointer;
+  }
+  input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
+  input[type=color]::-webkit-color-swatch { border: none; border-radius: 2px; }
+
+  /* Export toggle */
+  .toggle-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .toggle-wrap span {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #888;
+    flex: 1;
+  }
+  .toggle {
+    position: relative;
+    width: 28px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-track {
+    position: absolute;
+    inset: 0;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .toggle-track::after {
+    content: '';
+    position: absolute;
+    left: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #555;
+    transition: left 0.15s, background 0.15s;
+  }
+  .toggle input:checked + .toggle-track { background: #2a2a2a; border-color: #888; }
+  .toggle input:checked + .toggle-track::after { left: 14px; background: #ddd; }
+
+  .export-btns { display: flex; gap: 6px; }
+  .export-btns .btn { flex: 1; text-align: center; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <div class="field">
+    <label>Text</label>
+    <input type="text" id="text-input" placeholder="type something…" value="solved">
+  </div>
+
+  <div class="field">
+    <label>Mode</label>
+    <div class="mode-options">
+      <button class="mode-btn active" data-mode="solved">Draw Path</button>
+      <button class="mode-btn" data-mode="stampWord">Stamp Word</button>
+    </div>
+  </div>
+
+  <div class="field" id="rotate-field">
+    <label>Rotate</label>
+    <div class="rotate-controls">
+      <button class="rotate-btn" id="rotate-left" aria-label="Rotate left">&larr;</button>
+      <span class="rotate-val" id="rotate-val">0°</span>
+      <button class="rotate-btn" id="rotate-right" aria-label="Rotate right">&rarr;</button>
+    </div>
+    <div class="toggle-wrap">
+      <span>Random</span>
+      <label class="toggle">
+        <input type="checkbox" id="rotate-random">
+        <span class="toggle-track"></span>
+      </label>
+    </div>
+  </div>
+
+  <div class="field" id="curve-field">
+    <label>Curve</label>
+    <div class="rotate-controls">
+      <button class="rotate-btn" id="curve-down" aria-label="Curve down">&darr;</button>
+      <span class="rotate-val" id="curve-val">0</span>
+      <button class="rotate-btn" id="curve-up" aria-label="Curve up">&uarr;</button>
+    </div>
+    <div class="toggle-wrap">
+      <span>Random</span>
+      <label class="toggle">
+        <input type="checkbox" id="curve-random">
+        <span class="toggle-track"></span>
+      </label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Size</label>
+    <div class="range-wrap">
+      <input type="range" id="size" min="14" max="200" value="100">
+      <span class="range-val" id="size-val">100</span>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Colors</label>
+    <div class="color-row">
+      <div class="color-swatch-wrap">
+        <span>Text</span>
+        <input type="color" id="text-color" value="#000000">
+      </div>
+      <div class="color-swatch-wrap">
+        <span>Background</span>
+        <input type="color" id="bg-color" value="#ffffff">
+      </div>
+      <div class="color-swatch-wrap" id="highlight-row">
+        <span>Highlight</span>
+        <input type="color" id="highlight-color" value="#e8ff00">
+      </div>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Export</label>
+    <div class="export-btns">
+      <button class="btn" id="export-png-btn">PNG</button>
+      <button class="btn" id="export-svg-btn">SVG</button>
+    </div>
+    <div class="toggle-wrap">
+      <span>Include background?</span>
+      <label class="toggle">
+        <input type="checkbox" id="export-bg" checked>
+        <span class="toggle-track"></span>
+      </label>
+    </div>
+  </div>
+
+  <div class="btn-group">
+    <button class="btn" id="undo-btn">Undo</button>
+    <button class="btn" id="clear-btn">Clear Canvas</button>
+  </div>
+</div>
+
+<div id="canvas-wrap">
+  <canvas id="c"></canvas>
+  <div id="hint">Click and drag to draw a path</div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.min.js"></script>
+<script>
+const canvas    = document.getElementById('c');
+const ctx       = canvas.getContext('2d');
+const hint      = document.getElementById('hint');
+
+const textInput    = document.getElementById('text-input');
+const sizeSlider   = document.getElementById('size');
+const sizeVal      = document.getElementById('size-val');
+const clearBtn     = document.getElementById('clear-btn');
+const undoBtn      = document.getElementById('undo-btn');
+const textColorPicker     = document.getElementById('text-color');
+const bgColorPicker       = document.getElementById('bg-color');
+const highlightColorPicker = document.getElementById('highlight-color');
+let currentFont = 'SelectaBlack';
+
+let W, H;
+let mode           = 'solved';
+let rawPts         = [];        // points for the stroke currently being drawn
+let liveLetters    = [];        // letters for the stroke being drawn right now
+let completedPaths = [];        // array of {letters} fully revealed
+let stampLetters   = [];
+let undoStack      = [];        // max 5 entries
+let isDrawing      = false;
+let stampPreview   = null;      // {x, y} in stampWord mode for 0.3 opacity preview
+let stampRotation  = 0;         // degrees; applied to stampWord placements
+let stampCurve     = 0;         // -5..5; upward arc when positive, downward when negative
+let pendingRotation = 0;        // used for preview/commit when random is on
+let pendingCurve    = 0;
+
+const MIN_DIST   = 4;
+const EXTRA_SPACE = 6;
+
+// ── Resize ────────────────────────────────────────────────────────────────────
+function resize() {
+  const wrap = document.getElementById('canvas-wrap');
+  const dpr  = window.devicePixelRatio || 1;
+  W = wrap.clientWidth;
+  H = wrap.clientHeight;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+// ── Chaikin smoothing ─────────────────────────────────────────────────────────
+function chaikin(pts, passes) {
+  if (pts.length < 3 || passes === 0) return pts;
+  const MAX_PTS = 20000;
+  let result = pts;
+  for (let p = 0; p < passes; p++) {
+    if (result.length * 2 > MAX_PTS) break;
+    const next = [result[0]];
+    for (let i = 0; i < result.length - 1; i++) {
+      const a = result[i], b = result[i + 1];
+      next.push({ x: a.x * 0.75 + b.x * 0.25, y: a.y * 0.75 + b.y * 0.25 });
+      next.push({ x: a.x * 0.25 + b.x * 0.75, y: a.y * 0.25 + b.y * 0.75 });
+    }
+    next.push(result[result.length - 1]);
+    result = next;
+  }
+  return result;
+}
+
+// ── Arc-length LUT from polyline ──────────────────────────────────────────────
+function buildSampler(pts) {
+  if (pts.length < 2) return { lut: [], totalLen: 0 };
+  const lut = [];
+  let totalLen = 0;
+
+  for (let i = 0; i < pts.length; i++) {
+    if (i === 0) {
+      const dx = pts[1].x - pts[0].x, dy = pts[1].y - pts[0].y;
+      lut.push({ len: 0, x: pts[0].x, y: pts[0].y, angle: Math.atan2(dy, dx) });
+      continue;
+    }
+    const prev = pts[i - 1], cur = pts[i];
+    const dx = cur.x - prev.x, dy = cur.y - prev.y;
+    const d  = Math.sqrt(dx * dx + dy * dy);
+    totalLen += d;
+    lut.push({ len: totalLen, x: cur.x, y: cur.y, angle: Math.atan2(dy, dx) });
+  }
+
+  return { lut, totalLen };
+}
+
+function sampleAt(sampler, target) {
+  const { lut } = sampler;
+  if (!lut.length) return { x: 0, y: 0, angle: 0 };
+  target = Math.max(0, Math.min(target, sampler.totalLen));
+
+  let lo = 0, hi = lut.length - 1;
+  while (lo < hi - 1) {
+    const mid = (lo + hi) >> 1;
+    lut[mid].len <= target ? (lo = mid) : (hi = mid);
+  }
+
+  const s  = lut[lo];
+  const s2 = lut[Math.min(lo + 1, lut.length - 1)];
+  const range = s2.len - s.len;
+  const frac  = range > 0 ? (target - s.len) / range : 0;
+
+  return {
+    x:     s.x + (s2.x - s.x) * frac,
+    y:     s.y + (s2.y - s.y) * frac,
+    angle: s.angle
+  };
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render() {
+  ctx.fillStyle = bgColorPicker.value;
+  ctx.fillRect(0, 0, W, H);
+  renderDraw();
+  renderStamp();
+  renderStampPreview();
+}
+
+function renderStampPreview() {
+  if (!stampPreview || mode !== 'stampWord') return;
+  const word = buildStampWord(stampPreview.x, stampPreview.y);
+  if (!word.length) return;
+  ctx.save();
+  ctx.globalAlpha = 0.3;
+  drawHighlight(word, highlightColorPicker.value, false);
+  drawLetters(word, currentFont, textColorPicker.value, false);
+  ctx.restore();
+}
+
+// Build letter positions from a raw point array
+// Simplify a polyline by keeping only points at least minDist apart
+function simplifyByDistance(pts, minDist) {
+  if (pts.length < 3 || minDist <= 0) return pts;
+  const out = [pts[0]];
+  const d2  = minDist * minDist;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const last = out[out.length - 1];
+    const dx = pts[i].x - last.x, dy = pts[i].y - last.y;
+    if (dx * dx + dy * dy >= d2) out.push(pts[i]);
+  }
+  out.push(pts[pts.length - 1]);
+  return out;
+}
+
+function buildLetters(rawPoints) {
+  const smoothness = 10;
+  // Higher smoothness: simplify raw points more aggressively (wider spacing → rounder arcs)
+  const simplifyDist = smoothness * 10;
+  const simplified   = simplifyByDistance(rawPoints, simplifyDist);
+  // Then run Chaikin smoothing that also scales with slider
+  const passes = Math.min(4 + smoothness, 12);
+  const pts    = chaikin(simplified, passes);
+  if (pts.length < 2) return [];
+
+  const sampler    = buildSampler(pts);
+  const text       = textInput.value || 'FUCK';
+  const fontSize   = parseInt(sizeSlider.value);
+  const isSolved   = mode === 'solved';
+  const extraSpace = isSolved ? 0 : EXTRA_SPACE;
+
+  ctx.font = `${fontSize}px ${currentFont}`;
+  ctx.textBaseline = 'middle';
+
+  // In solved mode, add a double-space gap between word repetitions
+  const wordGap = isSolved ? ctx.measureText(' ').width * 2 : 0;
+
+  const letters = [];
+  let pos = 0, ci = 0;
+  while (pos < sampler.totalLen) {
+    // Insert word gap before each new word (not the first)
+    if (isSolved && ci > 0 && ci % text.length === 0) {
+      pos += wordGap;
+      if (pos >= sampler.totalLen) break;
+    }
+    const char = text[ci % text.length];
+    const w    = ctx.measureText(char).width;
+    const { x, y, angle } = sampleAt(sampler, pos + w * 0.5);
+    letters.push({ char, w, x, y, angle });
+    pos += w + extraSpace;
+    ci++;
+  }
+  return letters;
+}
+
+// Draw a letters array with a specific font, color, and optional trail scale
+function drawLetters(letters, font = currentFont, color = textColorPicker.value, applyScale = true, revealCount = letters.length, size = parseInt(sizeSlider.value)) {
+  const visible = letters.slice(0, revealCount);
+  const total   = letters.length;
+
+  ctx.font = `${size}px ${font}`;
+  ctx.textBaseline = 'middle';
+
+  for (let i = 0; i < visible.length; i++) {
+    const { char, w, x, y, angle } = visible[i];
+    const distFromEnd = total - 1 - i;
+    const scale = applyScale ? Math.max(0, 1 - distFromEnd * 0.025) : 1;
+    if (scale <= 0) continue;
+
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.scale(scale, scale);
+    ctx.fillText(char, -w * 0.5, 0);
+    ctx.restore();
+  }
+}
+
+function drawHighlight(letters, highlightColor, applyScale = false, size = parseInt(sizeSlider.value), font = currentFont) {
+  if (!letters.length) return;
+  const fontSize = size;
+  const text     = textInput.value || 'FUCK';
+  const wordLen  = text.length;
+  const total    = letters.length;
+  // Measure exact bounds from the drawing origin for this font/size
+  ctx.font = `${fontSize}px ${font}`;
+  ctx.textBaseline = 'middle';
+  const m    = ctx.measureText(text.toUpperCase());
+  const hTop = m.actualBoundingBoxAscent;
+  const hBot = m.actualBoundingBoxDescent;
+
+  ctx.fillStyle = highlightColor;
+
+  const numWords = Math.ceil(total / wordLen);
+  for (let wi = 0; wi < numWords; wi++) {
+    const start = wi * wordLen;
+    const end   = Math.min(start + wordLen, total);
+
+    const topPts = [];
+    const botPts = [];
+
+    for (let i = start; i < end; i++) {
+      const { x, y, angle, w } = letters[i];
+      const distFromEnd = total - 1 - i;
+      const s = applyScale ? Math.max(0, 1 - distFromEnd * 0.025) : 1;
+      if (s <= 0) continue;
+
+      const cos_a = Math.cos(angle), sin_a = Math.sin(angle);
+      function tw(lx, ly) {
+        return { x: x + (lx * cos_a - ly * sin_a) * s,
+                 y: y + (lx * sin_a + ly * cos_a) * s };
+      }
+
+      // No extension at word boundaries — creates gap between word blocks
+      const lx = (i === start)   ? -w / 2 : -w / 2 - EXTRA_SPACE / 2;
+      const rx = (i === end - 1) ?  w / 2 :  w / 2 + EXTRA_SPACE / 2;
+
+      if (i === start) {
+        topPts.push(tw(lx, -hTop));
+        botPts.push(tw(lx,  hBot));
+      }
+      topPts.push(tw(rx, -hTop));
+      botPts.push(tw(rx,  hBot));
+    }
+
+    if (!topPts.length) continue;
+    ctx.beginPath();
+    ctx.moveTo(topPts[0].x, topPts[0].y);
+    for (let i = 1; i < topPts.length; i++) ctx.lineTo(topPts[i].x, topPts[i].y);
+    for (let i = botPts.length - 1; i >= 0; i--) ctx.lineTo(botPts[i].x, botPts[i].y);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+function renderDraw() {
+  // Each path rendered as a unit (highlight then text) so newer layers sit on top
+  for (const { letters, font, color, applyScale, highlight, size } of completedPaths) {
+    if (highlight) drawHighlight(letters, highlight, applyScale, size, font);
+    drawLetters(letters, font, color, applyScale, letters.length, size);
+  }
+  if (liveLetters.length) {
+    if (mode === 'solved') drawHighlight(liveLetters, highlightColorPicker.value, false);
+    drawLetters(liveLetters, currentFont, textColorPicker.value, mode !== 'solved');
+  }
+}
+
+function renderStamp() {
+  if (!stampLetters.length) return;
+  ctx.textBaseline = 'middle';
+
+  for (const { char, w, x, y, scale, font, color, size } of stampLetters) {
+    ctx.font = `${size}px ${font}`;
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+    ctx.fillText(char, -w * 0.5, 0);
+    ctx.restore();
+  }
+}
+
+/// ── Stamp: place all letters of the word on each click ───────────────────────
+function placeStampLetter(clickX, clickY) {
+  const text       = textInput.value || 'FUCK';
+  const fontSize   = parseInt(sizeSlider.value);
+  const extraSpace = EXTRA_SPACE;
+
+  ctx.font = `${fontSize}px ${currentFont}`;
+  ctx.textBaseline = 'middle';
+
+  // Measure total width to center the group on the click point
+  let totalW = 0;
+  for (const char of text) totalW += ctx.measureText(char).width + extraSpace;
+
+  let curX = clickX - totalW / 2;
+
+  for (const char of text) {
+    const w     = ctx.measureText(char).width;
+    const scale = 0.5 + Math.random();                    // 0.5 – 1.5
+    const yOff  = (Math.random() - 0.5) * fontSize * 4;  // ±2 em
+    stampLetters.push({ char, w, x: curX + w * 0.5, y: clickY + yOff, scale, font: currentFont, color: textColorPicker.value, size: fontSize });
+    curX += w + extraSpace;
+  }
+  undoStack.push({ type: 'stamp', count: text.length });
+  if (undoStack.length > 5) undoStack.shift();
+}
+
+// ── Mouse / touch ─────────────────────────────────────────────────────────────
+function ptFromEvent(e) {
+  const r = canvas.getBoundingClientRect();
+  const src = e.touches ? e.touches[0] : e;
+  return { x: src.clientX - r.left, y: src.clientY - r.top };
+}
+
+function startInteract(e) {
+  e.preventDefault();
+  hint.style.opacity = '0';
+
+  if (mode === 'stamp') {
+    const pt = ptFromEvent(e);
+    placeStampLetter(pt.x, pt.y);
+    render();
+    return;
+  }
+
+  if (mode === 'stampWord') {
+    const pt = ptFromEvent(e);
+    placeStampWord(pt.x, pt.y);
+    rollPending();                     // fresh random for the next stamp/preview
+    render();
+    return;
+  }
+
+  // draw mode
+  isDrawing = true;
+  rawPts = [];
+  const pt = ptFromEvent(e);
+  rawPts.push(pt);
+  // don't render mid-stroke — wait for mouseup
+}
+
+// Build one horizontally-stamped word centered on (cx, cy). Returns the letters array.
+function buildStampWord(cx, cy) {
+  const text     = textInput.value || 'solved';
+  const fontSize = parseInt(sizeSlider.value);
+
+  ctx.font = `${fontSize}px ${currentFont}`;
+  ctx.textBaseline = 'middle';
+  let totalW = 0;
+  for (const ch of text) totalW += ctx.measureText(ch).width;
+  const pad = fontSize * 0.25;
+
+  // Build a horizontal baseline that optionally arcs up/down.
+  // curve: -5..5. Positive = arc up (rainbow shape, peak above baseline).
+  // Peak bend height is ~8% of path width per level → level 5 = 40% of width.
+  const curve  = effectiveCurve();
+  const spanW  = totalW + pad * 2;
+  const peak   = curve * spanW * 0.08;
+  const samples = 24;
+  const baseRaw = [];
+  for (let i = 0; i <= samples; i++) {
+    const t  = i / samples;
+    const px = cx - spanW / 2 + spanW * t;
+    const py = cy - peak * 4 * t * (1 - t);
+    baseRaw.push({ x: px, y: py });
+  }
+  // Rotate raw points around (cx, cy) so letters run at that angle
+  const rot = effectiveRotation() * Math.PI / 180;
+  const cosR = Math.cos(rot), sinR = Math.sin(rot);
+  const rawPoints = baseRaw.map(p => {
+    const dx = p.x - cx, dy = p.y - cy;
+    return { x: cx + dx * cosR - dy * sinR, y: cy + dx * sinR + dy * cosR };
+  });
+
+  const prevMode = mode;
+  mode = 'solved';
+  const letters = buildLetters(rawPoints);
+  mode = prevMode;
+  return letters.slice(0, text.length);
+}
+
+// One-click: drop the whole word horizontally centered on the click
+function placeStampWord(clickX, clickY) {
+  const word = buildStampWord(clickX, clickY);
+  if (!word.length) return;
+
+  completedPaths.push({
+    letters: word,
+    font: currentFont,
+    color: textColorPicker.value,
+    size: parseInt(sizeSlider.value),
+    applyScale: false,
+    highlight: highlightColorPicker.value
+  });
+  undoStack.push({ type: 'path' });
+  if (undoStack.length > 5) undoStack.shift();
+}
+
+function moveInteract(e) {
+  if (mode === 'stampWord') {
+    stampPreview = ptFromEvent(e);
+    render();
+    return;
+  }
+  if (!isDrawing || mode === 'stamp') return;
+  e.preventDefault();
+  const pt   = ptFromEvent(e);
+  const last = rawPts[rawPts.length - 1];
+  const dx = pt.x - last.x, dy = pt.y - last.y;
+  if (dx * dx + dy * dy < MIN_DIST * MIN_DIST) return;
+  rawPts.push(pt);
+  if (rawPts.length >= 2) {
+    liveLetters = buildLetters(rawPts);
+    render();
+  }
+}
+
+function endInteract() {
+  if (!isDrawing) return;
+  isDrawing = false;
+  if (liveLetters.length) {
+    completedPaths.push({
+      letters: liveLetters, font: currentFont, color: textColorPicker.value,
+      size: parseInt(sizeSlider.value),
+      applyScale: mode !== 'solved',
+      highlight: mode === 'solved' ? highlightColorPicker.value : null
+    });
+    undoStack.push({ type: 'path' });
+    if (undoStack.length > 5) undoStack.shift();
+    liveLetters = [];
+    render();
+  }
+  rawPts = [];
+}
+
+canvas.addEventListener('mousedown',  startInteract);
+canvas.addEventListener('mousemove',  moveInteract);
+canvas.addEventListener('mouseup',    endInteract);
+canvas.addEventListener('mouseleave', (e) => {
+  endInteract(e);
+  if (stampPreview) { stampPreview = null; render(); }
+});
+canvas.addEventListener('touchstart', startInteract, { passive: false });
+canvas.addEventListener('touchmove',  moveInteract,  { passive: false });
+canvas.addEventListener('touchend',   endInteract);
+
+// ── Controls ──────────────────────────────────────────────────────────────────
+document.body.className = 'mode-solved';
+
+const modeBtns = document.querySelectorAll('.mode-btn');
+modeBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    mode = btn.dataset.mode;
+    modeBtns.forEach(b => b.classList.toggle('active', b === btn));
+    // stampWord gets both mode-solved (for highlight-row) and mode-stampWord (for rotate-field)
+    document.body.className = mode === 'stampWord' ? 'mode-solved mode-stampWord' : `mode-${mode}`;
+    hint.textContent = mode === 'stampWord'
+      ? 'Click to place a word'
+      : 'Click and drag to draw a path';
+    if (!completedPaths.length && !rawPts.length && !stampLetters.length) hint.style.opacity = '1';
+    stampPreview = null;
+    render();
+  });
+});
+
+// Rotate controls (Stamp Word mode)
+const rotateLeftBtn  = document.getElementById('rotate-left');
+const rotateRightBtn = document.getElementById('rotate-right');
+const rotateVal      = document.getElementById('rotate-val');
+function setRotation(deg) {
+  stampRotation = ((deg % 360) + 360) % 360;
+  if (stampRotation > 180) stampRotation -= 360;
+  refreshRotateCurveLabels();
+  if (mode === 'stampWord') render();
+}
+rotateLeftBtn .addEventListener('click', () => { randomRotateToggle.checked = false; randomRotate = false; rotateField.classList.remove('is-random'); setRotation(stampRotation - 5); });
+rotateRightBtn.addEventListener('click', () => { randomRotateToggle.checked = false; randomRotate = false; rotateField.classList.remove('is-random'); setRotation(stampRotation + 5); });
+
+const randomRotateToggle = document.getElementById('rotate-random');
+const randomCurveToggle  = document.getElementById('curve-random');
+let randomRotate = false;
+let randomCurve  = false;
+
+function rollPending() {
+  if (randomRotate) pendingRotation = Math.floor(Math.random() * 360);
+  if (randomCurve)  pendingCurve    = Math.floor(Math.random() * 11) - 5;
+  refreshRotateCurveLabels();
+}
+
+function effectiveRotation() { return randomRotate ? pendingRotation : stampRotation; }
+function effectiveCurve()    { return randomCurve  ? pendingCurve    : stampCurve; }
+
+function refreshRotateCurveLabels() {
+  rotateVal.textContent = randomRotate ? `${pendingRotation}° rnd` : `${stampRotation}°`;
+  curveVal .textContent = randomCurve  ? `${pendingCurve} rnd`     : String(stampCurve);
+}
+
+const rotateField = document.getElementById('rotate-field');
+const curveField  = document.getElementById('curve-field');
+
+randomRotateToggle.addEventListener('change', () => {
+  randomRotate = randomRotateToggle.checked;
+  rotateField.classList.toggle('is-random', randomRotate);
+  if (randomRotate) pendingRotation = Math.floor(Math.random() * 360);
+  refreshRotateCurveLabels();
+  if (mode === 'stampWord') render();
+});
+randomCurveToggle.addEventListener('change', () => {
+  randomCurve = randomCurveToggle.checked;
+  curveField.classList.toggle('is-random', randomCurve);
+  if (randomCurve) pendingCurve = Math.floor(Math.random() * 11) - 5;
+  refreshRotateCurveLabels();
+  if (mode === 'stampWord') render();
+});
+
+// Curve controls (Stamp Word mode) — -5..5, parabolic arc
+const curveUpBtn   = document.getElementById('curve-up');
+const curveDownBtn = document.getElementById('curve-down');
+const curveVal     = document.getElementById('curve-val');
+function setCurve(level) {
+  stampCurve = Math.max(-5, Math.min(5, level));
+  refreshRotateCurveLabels();
+  if (mode === 'stampWord') render();
+}
+curveUpBtn  .addEventListener('click', () => { randomCurveToggle.checked = false; randomCurve = false; curveField.classList.remove('is-random'); setCurve(stampCurve + 1); });
+curveDownBtn.addEventListener('click', () => { randomCurveToggle.checked = false; randomCurve = false; curveField.classList.remove('is-random'); setCurve(stampCurve - 1); });
+
+window.addEventListener('keydown', (e) => {
+  if (mode !== 'stampWord') return;
+  const tag = (e.target && e.target.tagName) || '';
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    randomRotateToggle.checked = false; randomRotate = false; rotateField.classList.remove('is-random');
+  }
+  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+    randomCurveToggle.checked = false; randomCurve = false; curveField.classList.remove('is-random');
+  }
+  if (e.key === 'ArrowLeft')  { setRotation(stampRotation - 5); e.preventDefault(); }
+  if (e.key === 'ArrowRight') { setRotation(stampRotation + 5); e.preventDefault(); }
+  if (e.key === 'ArrowUp')    { setCurve(stampCurve + 1);       e.preventDefault(); }
+  if (e.key === 'ArrowDown')  { setCurve(stampCurve - 1);       e.preventDefault(); }
+});
+
+textInput.addEventListener('input', render);
+
+
+
+sizeSlider.addEventListener('input', () => {
+  sizeVal.textContent = sizeSlider.value;
+  render();
+});
+
+
+
+undoBtn.addEventListener('click', () => {
+  const action = undoStack.pop();
+  if (!action) return;
+  if (action.type === 'path') completedPaths.pop();
+  if (action.type === 'stamp') stampLetters.splice(-action.count, action.count);
+  render();
+});
+
+clearBtn.addEventListener('click', () => {
+  rawPts = [];
+  liveLetters = [];
+  completedPaths = [];
+  stampLetters = [];
+  undoStack = [];
+  hint.style.opacity = '1';
+  ctx.fillStyle = bgColorPicker.value;
+  ctx.fillRect(0, 0, W, H);
+});
+
+highlightColorPicker.addEventListener('input', render);
+
+textColorPicker.addEventListener('input', () => {
+  const c = textColorPicker.value;
+  completedPaths.forEach(p => p.color = c);
+  stampLetters.forEach(l => l.color = c);
+  render();
+});
+bgColorPicker.addEventListener('input', () => {
+  document.body.style.background = bgColorPicker.value;
+  render();
+});
+
+window.addEventListener('resize', () => {
+  resize();
+  render();
+});
+
+// ── Export ────────────────────────────────────────────────────────────────────
+const exportBgToggle  = document.getElementById('export-bg');
+const exportPngBtn    = document.getElementById('export-png-btn');
+const exportSvgBtn    = document.getElementById('export-svg-btn');
+
+function drawAllToContext(oc, withBg) {
+  const fallbackSize = parseInt(sizeSlider.value);
+  const text     = textInput.value || 'FUCK';
+  const wordLen  = text.length;
+  if (withBg) {
+    oc.fillStyle = bgColorPicker.value;
+    oc.fillRect(0, 0, W, H);
+  }
+
+  oc.textBaseline = 'middle';
+
+  // Each path rendered as a unit (highlight then text) so newer layers sit on top
+  for (const { letters, font, color, applyScale, highlight, size } of completedPaths) {
+    const pathSize = size || fallbackSize;
+    const total    = letters.length;
+
+    // per-path metrics for highlight polygon
+    oc.font = `${pathSize}px ${font}`;
+    const hlM  = oc.measureText(text.toUpperCase());
+    const hTop = hlM.actualBoundingBoxAscent, hBot = hlM.actualBoundingBoxDescent;
+
+    // highlight polygon
+    if (highlight) {
+      oc.fillStyle = highlight;
+      for (let wi = 0; wi < Math.ceil(total / wordLen); wi++) {
+        const start = wi * wordLen, end = Math.min(start + wordLen, total);
+        const topPts = [], botPts = [];
+        for (let i = start; i < end; i++) {
+          const { x, y, angle, w } = letters[i];
+          const s = applyScale ? Math.max(0, 1 - (total - 1 - i) * 0.025) : 1;
+          if (s <= 0) continue;
+          const cos_a = Math.cos(angle), sin_a = Math.sin(angle);
+          const tw = (lx, ly) => ({ x: x + (lx*cos_a - ly*sin_a)*s, y: y + (lx*sin_a + ly*cos_a)*s });
+          const lx = (i === start)   ? -w/2 : -w/2 - EXTRA_SPACE/2;
+          const rx = (i === end - 1) ?  w/2 :  w/2 + EXTRA_SPACE/2;
+          if (i === start) { topPts.push(tw(lx,-hTop)); botPts.push(tw(lx,hBot)); }
+          topPts.push(tw(rx,-hTop)); botPts.push(tw(rx,hBot));
+        }
+        if (!topPts.length) continue;
+        oc.beginPath();
+        oc.moveTo(topPts[0].x, topPts[0].y);
+        for (let i = 1; i < topPts.length; i++) oc.lineTo(topPts[i].x, topPts[i].y);
+        for (let i = botPts.length-1; i >= 0; i--) oc.lineTo(botPts[i].x, botPts[i].y);
+        oc.closePath(); oc.fill();
+      }
+    }
+    // letters
+    oc.font = `${pathSize}px ${font}`;
+    for (let i = 0; i < total; i++) {
+      const { char, w, x, y, angle } = letters[i];
+      const distFromEnd = total - 1 - i;
+      const scale = applyScale ? Math.max(0, 1 - distFromEnd * 0.025) : 1;
+      if (scale <= 0) continue;
+      oc.save();
+      oc.fillStyle = color;
+      oc.translate(x, y);
+      oc.rotate(angle);
+      oc.scale(scale, scale);
+      oc.fillText(char, -w * 0.5, 0);
+      oc.restore();
+    }
+  }
+  // stamp letters
+  for (const { char, w, x, y, scale, font, color, size } of stampLetters) {
+    oc.font = `${size || fallbackSize}px ${font}`;
+    oc.save();
+    oc.fillStyle = color;
+    oc.translate(x, y);
+    oc.scale(scale, scale);
+    oc.fillText(char, -w * 0.5, 0);
+    oc.restore();
+  }
+}
+
+exportPngBtn.addEventListener('click', () => {
+  const withBg = exportBgToggle.checked;
+  const dpr = window.devicePixelRatio || 1;
+  const off = document.createElement('canvas');
+  off.width = W * dpr;
+  off.height = H * dpr;
+  const oc = off.getContext('2d');
+  oc.setTransform(dpr, 0, 0, dpr, 0, 0);
+  drawAllToContext(oc, withBg);
+  off.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'word-trail.png'; a.click();
+    URL.revokeObjectURL(url);
+  }, 'image/png');
+});
+
+exportSvgBtn.addEventListener('click', async () => {
+  const withBg       = exportBgToggle.checked;
+  const fallbackSize = parseInt(sizeSlider.value);
+
+  // Load font via opentype.js for path outlines
+  let otFont = null;
+  try {
+    otFont = await new Promise((resolve, reject) =>
+      opentype.load('./SelectaTrialUnlicensed-Black.otf', (err, f) => err ? reject(err) : resolve(f))
+    );
+  } catch(e) { console.warn('opentype load failed, falling back to text elements', e); }
+
+  let parts = [`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">`];
+  if (withBg) parts.push(`<rect width="${W}" height="${H}" fill="${bgColorPicker.value}"/>`);
+
+  function letterToSVG(char, w, x, y, angle, scale, color, fontSize) {
+    const baselineOffset = otFont
+      ? fontSize * (otFont.ascender / otFont.unitsPerEm - 0.5)
+      : 0;
+    const angleDeg = (angle * 180 / Math.PI).toFixed(4);
+    const s        = scale.toFixed(4);
+    const transform = `translate(${x.toFixed(2)},${y.toFixed(2)}) rotate(${angleDeg}) scale(${s})`;
+    if (otFont) {
+      const path = otFont.getPath(char, -w * 0.5, baselineOffset, fontSize);
+      const d    = path.toPathData(2);
+      return `<path d="${d}" fill="${color}" transform="${transform}"/>`;
+    }
+    const esc = char.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return `<text font-family="SelectaBlack" font-size="${fontSize}" fill="${color}" text-anchor="middle" dominant-baseline="middle" transform="${transform}">${esc}</text>`;
+  }
+
+  const svgWordLen = (textInput.value || 'FUCK').length;
+  ctx.textBaseline = 'middle';
+
+  // highlight polygons — use each path's stored size
+  for (const { letters, highlight, applyScale: hlScale, size, font } of completedPaths) {
+    if (!highlight) continue;
+    const pathSize = size || fallbackSize;
+    ctx.font = `${pathSize}px ${font || currentFont}`;
+    const svgHlM = ctx.measureText((textInput.value || 'FUCK').toUpperCase());
+    const svgHTop = svgHlM.actualBoundingBoxAscent, svgHBot = svgHlM.actualBoundingBoxDescent;
+
+    const total = letters.length;
+    for (let wi = 0; wi < Math.ceil(total / svgWordLen); wi++) {
+      const start = wi * svgWordLen, end = Math.min(start + svgWordLen, total);
+      const pts = [];
+      const botPts = [];
+      for (let i = start; i < end; i++) {
+        const { x, y, angle, w } = letters[i];
+        const s = hlScale ? Math.max(0, 1 - (total - 1 - i) * 0.025) : 1;
+        if (s <= 0) continue;
+        const cos_a = Math.cos(angle), sin_a = Math.sin(angle);
+        const tw = (lx, ly) => `${(x+(lx*cos_a-ly*sin_a)*s).toFixed(2)},${(y+(lx*sin_a+ly*cos_a)*s).toFixed(2)}`;
+        const lx = (i === start)   ? -w/2 : -w/2 - EXTRA_SPACE/2;
+        const rx = (i === end - 1) ?  w/2 :  w/2 + EXTRA_SPACE/2;
+        if (i === start) { pts.push(tw(lx,-svgHTop)); botPts.push(tw(lx,svgHBot)); }
+        pts.push(tw(rx,-svgHTop)); botPts.push(tw(rx,svgHBot));
+      }
+      if (!pts.length) continue;
+      const allPts = [...pts, ...[...botPts].reverse()].join(' ');
+      parts.push(`<polygon points="${allPts}" fill="${highlight}"/>`);
+    }
+  }
+
+  // letter paths
+  for (const { letters, font, color, applyScale, size } of completedPaths) {
+    const pathSize = size || fallbackSize;
+    const total = letters.length;
+    for (let i = 0; i < total; i++) {
+      const { char, w, x, y, angle } = letters[i];
+      const distFromEnd = total - 1 - i;
+      const scale = applyScale ? Math.max(0, 1 - distFromEnd * 0.025) : 1;
+      if (scale <= 0) continue;
+      parts.push(letterToSVG(char, w, x, y, angle, scale, color, pathSize));
+    }
+  }
+  for (const { char, w, x, y, scale, color, size } of stampLetters) {
+    parts.push(letterToSVG(char, w, x, y, 0, scale, color, size || fallbackSize));
+  }
+
+  parts.push('</svg>');
+  const blob = new Blob([parts.join('')], { type: 'image/svg+xml' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'word-trail.svg'; a.click();
+  URL.revokeObjectURL(url);
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+document.fonts.load(`100px SelectaBlack`).then(() => render()).catch(() => {});
+resize();
+render();
+</script>
+</body>
+</html>
