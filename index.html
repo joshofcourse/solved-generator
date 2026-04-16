@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Word Trail</title>
+<title>Solved Tool</title>
 <style>
   @font-face {
     font-family: 'SelectaBlack';
@@ -1267,7 +1267,7 @@ exportPngBtn.addEventListener('click', () => {
   off.toBlob(blob => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = 'word-trail.png'; a.click();
+    a.href = url; a.download = 'solved.png'; a.click();
     URL.revokeObjectURL(url);
   }, 'image/png');
 });
@@ -1287,10 +1287,23 @@ exportSvgBtn.addEventListener('click', async () => {
   let parts = [`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">`];
   if (withBg) parts.push(`<rect width="${W}" height="${H}" fill="${bgColorPicker.value}"/>`);
 
-  function letterToSVG(char, w, x, y, angle, scale, color, fontSize) {
-    const baselineOffset = otFont
-      ? fontSize * (otFont.ascender / otFont.unitsPerEm - 0.5)
-      : 0;
+  function letterToSVG(char, w, x, y, angle, scale, color, fontSize, font) {
+    // Compute where canvas actually puts the baseline relative to the middle anchor.
+    // We need this because canvas's textBaseline='middle' is NOT symmetric around the
+    // font box — it uses em-box metrics that can shift by several % of fontSize.
+    ctx.font = `${fontSize}px ${font || currentFont}`;
+    ctx.textBaseline = 'alphabetic';
+    const mA = ctx.measureText('M');
+    ctx.textBaseline = 'middle';
+    const mM = ctx.measureText('M');
+    let baselineOffset;
+    if (mA.fontBoundingBoxAscent != null && mM.fontBoundingBoxAscent != null) {
+      baselineOffset = mA.fontBoundingBoxAscent - mM.fontBoundingBoxAscent;
+    } else {
+      baselineOffset = otFont
+        ? fontSize * (otFont.ascender + otFont.descender) / (2 * otFont.unitsPerEm)
+        : 0;
+    }
     const angleDeg = (angle * 180 / Math.PI).toFixed(4);
     const s        = scale.toFixed(4);
     const transform = `translate(${x.toFixed(2)},${y.toFixed(2)}) rotate(${angleDeg}) scale(${s})`;
@@ -1345,18 +1358,18 @@ exportSvgBtn.addEventListener('click', async () => {
       const distFromEnd = total - 1 - i;
       const scale = applyScale ? Math.max(0, 1 - distFromEnd * 0.025) : 1;
       if (scale <= 0) continue;
-      parts.push(letterToSVG(char, w, x, y, angle, scale, color, pathSize));
+      parts.push(letterToSVG(char, w, x, y, angle, scale, color, pathSize, font));
     }
   }
-  for (const { char, w, x, y, scale, color, size } of stampLetters) {
-    parts.push(letterToSVG(char, w, x, y, 0, scale, color, size || fallbackSize));
+  for (const { char, w, x, y, scale, color, size, font } of stampLetters) {
+    parts.push(letterToSVG(char, w, x, y, 0, scale, color, size || fallbackSize, font));
   }
 
   parts.push('</svg>');
   const blob = new Blob([parts.join('')], { type: 'image/svg+xml' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
-  a.href = url; a.download = 'word-trail.svg'; a.click();
+  a.href = url; a.download = 'solved.svg'; a.click();
   URL.revokeObjectURL(url);
 });
 
