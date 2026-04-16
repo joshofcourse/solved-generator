@@ -9,6 +9,26 @@
     font-family: 'SelectaBlack';
     src: url('./SelectaTrialUnlicensed-Black.otf') format('opentype');
   }
+  @font-face {
+    font-family: 'Selecta';
+    src: url('./SelectaTrialUnlicensed-Regular.otf') format('opentype');
+    font-weight: 400;
+  }
+  @font-face {
+    font-family: 'Selecta';
+    src: url('./SelectaTrialUnlicensed-Medium.otf') format('opentype');
+    font-weight: 500;
+  }
+  @font-face {
+    font-family: 'Selecta';
+    src: url('./SelectaTrialUnlicensed-Bold.otf') format('opentype');
+    font-weight: 700;
+  }
+  @font-face {
+    font-family: 'Selecta';
+    src: url('./SelectaTrialUnlicensed-Black.otf') format('opentype');
+    font-weight: 900;
+  }
 
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -17,34 +37,69 @@
     height: 100%;
     background: #0a0a0a;
     overflow: hidden;
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    font-family: 'Selecta', -apple-system, BlinkMacSystemFont, sans-serif;
     color: #fff;
   }
-
   body { display: flex; flex-direction: row; }
 
+  /* ── Sidebar ─────────────────────────────────────────────── */
   #sidebar {
     flex-shrink: 0;
-    width: 200px;
+    width: 240px;
     height: 100%;
     display: flex;
     flex-direction: column;
-    gap: 32px;
-    padding: 28px 24px 28px;
-    background: rgba(10, 10, 10, 0.98);
-    border-right: 1px solid #333;
+    gap: 24px;
+    padding: 24px;
+    background: #0a0a0a;
     overflow-y: auto;
+    letter-spacing: 0.01em;
+  }
+  #sidebar input,
+  #sidebar button,
+  #sidebar .rotate-val,
+  #sidebar .size-val { letter-spacing: inherit; }
+  #sidebar-logo {
+    display: block;
+    max-width: 160px;
+    width: 100%;
+    height: auto;
+    margin: 0;
+  }
+  #sidebar-main {
+    flex: 1 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-height: 0;
+  }
+  .divider { height: 1px; width: 192px; background: #2d2d2d; flex-shrink: 0; }
+
+  /* Field wrapper (label + control) */
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 192px;
+    flex-shrink: 0;
+  }
+  .field > label,
+  .rc-block > label {
+    font-family: 'Selecta';
+    font-weight: 400;
+    font-size: 13px;
+    line-height: 1.05;
+    color: rgba(255, 255, 255, 0.5);
   }
 
+  /* ── Canvas ──────────────────────────────────────────────── */
   #canvas-wrap {
     flex: 1;
     position: relative;
     min-width: 0;
     cursor: crosshair;
   }
-
   canvas { display: block; width: 100%; height: 100%; }
-
   #hint {
     position: absolute;
     inset: 0;
@@ -53,213 +108,123 @@
     justify-content: center;
     pointer-events: none;
     color: #1e1e1e;
-    font-size: 11px;
+    font-size: 12px;
     letter-spacing: 0.16em;
     text-transform: uppercase;
     transition: opacity 0.3s;
   }
 
-  .field { display: flex; flex-direction: column; gap: 10px; }
-
-  .field label {
-    font-size: 9px;
-    font-weight: 500;
-    letter-spacing: 0.13em;
-    text-transform: uppercase;
-    color: #666;
-  }
-
+  /* ── Text input ─────────────────────────────────────────── */
   #text-input {
-    background: none;
-    border: none;
-    border-bottom: 1px solid #3a3a3a;
-    color: #e0e0e0;
-    font-size: 15px;
-    padding: 3px 0 5px;
-    outline: none;
+    height: 40px;
     width: 100%;
-    caret-color: #888;
-    transition: border-color 0.15s;
-    letter-spacing: 0.02em;
+    background: #292929;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 16px;
+    font-family: 'Selecta', sans-serif;
+    font-weight: 700;
+    font-size: 24px;
+    line-height: 1.05;
+    color: #fff;
+    outline: none;
   }
-  #text-input:focus { border-bottom-color: #666; }
-  #text-input::placeholder { color: #383838; }
+  #text-input::placeholder { color: rgba(255,255,255,0.3); }
 
-  /* Mode toggle buttons */
-  .mode-options { display: flex; flex-direction: column; gap: 6px; }
-
+  /* ── Mode toggle (Draw / Stamp) ─────────────────────────── */
+  .mode-options {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+  }
   .mode-btn {
-    background: none;
-    border: 1px solid #333;
-    color: #888;
-    padding: 9px 12px;
-    font-size: 10px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    cursor: pointer;
-    border-radius: 2px;
-    font-family: inherit;
-    text-align: left;
-    transition: border-color 0.15s, color 0.15s, background 0.15s;
-    line-height: 1.4;
-  }
-  .mode-btn:hover { border-color: #555; color: #bbb; }
-  .mode-btn.active { border-color: #888; color: #e0e0e0; background: rgba(255,255,255,0.05); }
-  .mode-btn .mode-label { display: block; font-size: 11px; color: inherit; }
-  .mode-btn .mode-desc { display: block; font-size: 9px; color: #555; margin-top: 3px; letter-spacing: 0.06em; }
-  .mode-btn.active .mode-desc { color: #888; }
-
-  /* Font options */
-  .font-options { display: flex; flex-direction: column; gap: 5px; }
-  .font-btn {
-    background: none;
-    border: 1px solid #333;
-    color: #888;
+    flex: 1 0 0;
+    height: 32px;
     padding: 8px 12px;
-    font-size: 13px;
+    border: none;
+    border-radius: 4px;
+    font-family: 'Selecta';
+    font-weight: 500;
+    font-size: 16px;
+    line-height: 1.05;
+    text-align: center;
     cursor: pointer;
-    border-radius: 2px;
-    text-align: left;
-    transition: border-color 0.15s, color 0.15s, background 0.15s;
+    background: #292929;
+    color: #fff;
+    transition: background 0.15s, color 0.15s;
   }
-  .font-btn:hover { border-color: #555; color: #bbb; }
-  .font-btn.active { border-color: #888; color: #e0e0e0; background: rgba(255,255,255,0.05); }
+  .mode-btn:hover { background: #333; }
+  .mode-btn.active { background: #fff; color: #000; }
 
-  /* Highlight row hidden by default, shown only in solved mode */
-  #highlight-row { display: none; }
-  body.mode-solved #highlight-row { display: flex; }
-
-  /* Rotate + Curve rows hidden by default, shown only in stampWord mode */
+  /* ── Rotate + Curve rows (stampWord only) ───────────────── */
   #rotate-field, #curve-field { display: none; }
   body.mode-stampWord #rotate-field,
   body.mode-stampWord #curve-field { display: flex; }
+  #rotate-field, #curve-field { gap: 12px; }
 
-  /* When Random is on, hide the manual arrow controls */
-  #rotate-field.is-random .rotate-controls,
-  #curve-field.is-random  .rotate-controls { display: none; }
-
-  .rotate-controls { display: flex; align-items: center; gap: 10px; }
-  .rotate-btn {
-    background: none;
-    border: 1px solid #333;
-    color: #888;
-    padding: 8px 0;
-    flex: 1;
-    font-size: 14px;
-    cursor: pointer;
-    border-radius: 2px;
-    font-family: inherit;
-    transition: border-color 0.15s, color 0.15s, background 0.15s;
-  }
-  .rotate-btn:hover { border-color: #666; color: #ddd; }
-  .rotate-btn:active { background: rgba(255,255,255,0.05); }
-  .rotate-val {
-    font-size: 11px;
-    color: #666;
-    min-width: 36px;
-    text-align: center;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 0.04em;
-  }
-
-  .range-wrap { display: flex; align-items: center; gap: 11px; }
-
-  input[type=range] {
-    -webkit-appearance: none;
-    appearance: none;
+  .rc-block { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+  .rotate-controls {
+    display: flex;
+    gap: 4px;
+    align-items: center;
     width: 100%;
-    height: 1px;
-    background: #3a3a3a;
-    outline: none;
-    border-radius: 1px;
-    cursor: pointer;
   }
-  input[type=range]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 11px;
-    height: 11px;
-    border-radius: 50%;
-    background: #c0c0c0;
-    transition: transform 0.1s, background 0.1s;
-  }
-  input[type=range]::-webkit-slider-thumb:hover {
+  .rotate-btn {
+    width: 40px;
+    height: 32px;
+    flex-shrink: 0;
     background: #fff;
-    transform: scale(1.15);
-  }
-
-  .range-val {
-    font-size: 11px;
-    color: #666;
-    min-width: 24px;
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 0.04em;
-  }
-
-  .btn-group { display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
-
-  .btn {
-    background: none;
-    border: 1px solid #333;
-    color: #777;
-    padding: 9px 12px;
-    font-size: 9px;
-    letter-spacing: 0.13em;
-    text-transform: uppercase;
+    border: none;
+    border-radius: 4px;
     cursor: pointer;
-    border-radius: 2px;
-    font-family: inherit;
-    text-align: left;
-    transition: border-color 0.15s, color 0.15s;
-  }
-  .btn:hover { border-color: #666; color: #bbb; }
-  .btn.active { border-color: #888; color: #ddd; background: rgba(255,255,255,0.05); }
-
-  /* Color pickers */
-  .color-row { display: flex; flex-direction: column; gap: 8px; }
-
-  .color-swatch-wrap {
     display: flex;
     align-items: center;
-    gap: 10px;
+    justify-content: center;
+    padding: 0;
+    transition: background 0.15s;
+  }
+  .rotate-btn:hover { background: #e5e5e5; }
+  .rotate-btn svg { width: 18px; height: 18px; stroke: #000; }
+  .rotate-val {
+    flex: 1 0 0;
+    height: 32px;
+    background: #292929;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Selecta';
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 1.05;
+    color: #fff;
+  }
+  /* Dim (not hide) the arrow controls when Random is on */
+  #rotate-field.is-random .rc-block,
+  #curve-field.is-random  .rc-block {
+    opacity: 0.5;
+    pointer-events: none;
   }
 
-  .color-swatch-wrap span {
-    font-size: 10px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #888;
-    flex: 1;
-  }
-
-  input[type=color] {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 28px;
-    height: 28px;
-    border: 1px solid #444;
-    border-radius: 3px;
-    padding: 2px;
-    background: none;
-    cursor: pointer;
-  }
-  input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
-  input[type=color]::-webkit-color-swatch { border: none; border-radius: 2px; }
-
-  /* Export toggle */
+  /* Random sub-row */
   .toggle-wrap {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 8px;
+    gap: 8px;
+    width: 100%;
   }
-  .toggle-wrap span {
-    font-size: 10px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #888;
-    flex: 1;
+  .toggle-wrap > span {
+    flex: 1 0 0;
+    font-family: 'Selecta';
+    font-weight: 400;
+    font-size: 14px;
+    line-height: 1.05;
+    color: rgba(255,255,255,0.5);
+    text-align: right;
   }
+  .toggle-wrap.left-label > span { text-align: left; }
+
+  /* ── Toggle switch ──────────────────────────────────────── */
   .toggle {
     position: relative;
     width: 28px;
@@ -270,9 +235,8 @@
   .toggle-track {
     position: absolute;
     inset: 0;
-    background: #2a2a2a;
-    border: 1px solid #444;
-    border-radius: 8px;
+    background: #545454;
+    border-radius: 100px;
     cursor: pointer;
     transition: background 0.15s;
   }
@@ -282,111 +246,326 @@
     left: 2px;
     top: 50%;
     transform: translateY(-50%);
-    width: 10px;
-    height: 10px;
+    width: 12px;
+    height: 12px;
     border-radius: 50%;
-    background: #555;
-    transition: left 0.15s, background 0.15s;
+    background: #fff;
+    transition: left 0.15s;
   }
-  .toggle input:checked + .toggle-track { background: #2a2a2a; border-color: #888; }
-  .toggle input:checked + .toggle-track::after { left: 14px; background: #ddd; }
+  .toggle input:checked + .toggle-track { background: #fff; }
+  .toggle input:checked + .toggle-track::after { left: 14px; background: #000; }
 
-  .export-btns { display: flex; gap: 6px; }
-  .export-btns .btn { flex: 1; text-align: center; }
+  /* ── Size slider ────────────────────────────────────────── */
+  .size-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+  }
+  .size-slider-wrap {
+    flex: 1 0 0;
+    position: relative;
+    height: 16px;
+    display: flex;
+    align-items: center;
+  }
+  input[type=range]#size {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 2px;
+    background: #545454;
+    border-radius: 100px;
+    outline: none;
+    cursor: pointer;
+    margin: 0;
+  }
+  input[type=range]#size::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    cursor: pointer;
+    border: none;
+    transition: transform 0.1s;
+  }
+  input[type=range]#size::-webkit-slider-thumb:hover { transform: scale(1.1); }
+  .size-val {
+    flex-shrink: 0;
+    width: 48px;
+    height: 32px;
+    background: #292929;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Selecta';
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 1.05;
+    color: #fff;
+  }
+
+  /* ── Colors ─────────────────────────────────────────────── */
+  .color-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+  }
+  .color-swatch-wrap {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+  }
+  .color-swatch-wrap span {
+    flex: 1 0 0;
+    font-family: 'Selecta';
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 1.05;
+    color: #fff;
+  }
+  input[type=color] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border: 1px solid #545454;
+    border-radius: 4px;
+    padding: 2px;
+    background: none;
+    cursor: pointer;
+  }
+  input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
+  input[type=color]::-webkit-color-swatch { border: none; border-radius: 2px; }
+
+  /* ── Save Image ─────────────────────────────────────────── */
+  #save-image-field { gap: 12px; }
+  .save-header {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    width: 100%;
+  }
+  .save-header > label {
+    flex: 1 0 0;
+    font-family: 'Selecta';
+    font-weight: 400;
+    font-size: 13px;
+    line-height: 1.05;
+    color: rgba(255,255,255,0.5);
+  }
+  .save-header svg { width: 18px; height: 18px; stroke: #fff; opacity: 0.5; }
+  .export-btns {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+  }
+  .export-btns .btn {
+    flex: 1 0 0;
+    height: 32px;
+    background: #292929;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-family: 'Selecta';
+    font-weight: 500;
+    font-size: 16px;
+    line-height: 1.05;
+    text-align: center;
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .export-btns .btn:hover { background: #333; }
+
+  /* ── Bottom actions ─────────────────────────────────────── */
+  #sidebar-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+  }
+  .btn-undo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    height: 32px;
+    background: #292929;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-family: 'Selecta';
+    font-weight: 500;
+    font-size: 16px;
+    line-height: 1.05;
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-undo:hover { background: #333; }
+  .btn-undo svg { width: 18px; height: 18px; stroke: #fff; opacity: 0.5; }
+
+  .btn-reset {
+    width: 100%;
+    background: none;
+    border: none;
+    border-radius: 4px;
+    font-family: 'Selecta';
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 1.05;
+    color: #fff;
+    cursor: pointer;
+    padding: 4px;
+    transition: opacity 0.15s;
+  }
+  .btn-reset:hover { opacity: 0.7; }
 </style>
 </head>
 <body>
 
 <div id="sidebar">
-  <div class="field">
-    <label>Text</label>
-    <input type="text" id="text-input" placeholder="type something…" value="solved">
-  </div>
+  <img id="sidebar-logo" src="./solved-tool.png" alt="Solved Tool">
 
-  <div class="field">
-    <label>Mode</label>
-    <div class="mode-options">
-      <button class="mode-btn active" data-mode="solved">Draw Path</button>
-      <button class="mode-btn" data-mode="stampWord">Stamp Word</button>
+  <div id="sidebar-main">
+    <div class="field">
+      <label>Text</label>
+      <input type="text" id="text-input" placeholder="type something…" value="Solved">
     </div>
-  </div>
 
-  <div class="field" id="rotate-field">
-    <label>Rotate</label>
-    <div class="rotate-controls">
-      <button class="rotate-btn" id="rotate-left" aria-label="Rotate left">&larr;</button>
-      <span class="rotate-val" id="rotate-val">0°</span>
-      <button class="rotate-btn" id="rotate-right" aria-label="Rotate right">&rarr;</button>
-    </div>
-    <div class="toggle-wrap">
-      <span>Random</span>
-      <label class="toggle">
-        <input type="checkbox" id="rotate-random">
-        <span class="toggle-track"></span>
-      </label>
-    </div>
-  </div>
+    <div class="divider"></div>
 
-  <div class="field" id="curve-field">
-    <label>Curve</label>
-    <div class="rotate-controls">
-      <button class="rotate-btn" id="curve-down" aria-label="Curve down">&darr;</button>
-      <span class="rotate-val" id="curve-val">0</span>
-      <button class="rotate-btn" id="curve-up" aria-label="Curve up">&uarr;</button>
-    </div>
-    <div class="toggle-wrap">
-      <span>Random</span>
-      <label class="toggle">
-        <input type="checkbox" id="curve-random">
-        <span class="toggle-track"></span>
-      </label>
-    </div>
-  </div>
-
-  <div class="field">
-    <label>Size</label>
-    <div class="range-wrap">
-      <input type="range" id="size" min="14" max="200" value="100">
-      <span class="range-val" id="size-val">100</span>
-    </div>
-  </div>
-
-  <div class="field">
-    <label>Colors</label>
-    <div class="color-row">
-      <div class="color-swatch-wrap">
-        <span>Text</span>
-        <input type="color" id="text-color" value="#000000">
-      </div>
-      <div class="color-swatch-wrap">
-        <span>Background</span>
-        <input type="color" id="bg-color" value="#ffffff">
-      </div>
-      <div class="color-swatch-wrap" id="highlight-row">
-        <span>Highlight</span>
-        <input type="color" id="highlight-color" value="#e8ff00">
+    <div class="field">
+      <label>Mode</label>
+      <div class="mode-options">
+        <button class="mode-btn active" data-mode="solved">Draw</button>
+        <button class="mode-btn" data-mode="stampWord">Stamp</button>
       </div>
     </div>
+
+    <div class="field" id="rotate-field">
+      <div class="rc-block">
+        <label>Rotation</label>
+        <div class="rotate-controls">
+          <button class="rotate-btn" id="rotate-left" aria-label="Rotate left">
+            <svg viewBox="0 0 18 18" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 9H3"/><path d="M8 4L3 9l5 5"/>
+            </svg>
+          </button>
+          <span class="rotate-val" id="rotate-val">0°</span>
+          <button class="rotate-btn" id="rotate-right" aria-label="Rotate right">
+            <svg viewBox="0 0 18 18" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9h12"/><path d="M10 4l5 5-5 5"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="toggle-wrap">
+        <span>Random</span>
+        <label class="toggle">
+          <input type="checkbox" id="rotate-random">
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="field" id="curve-field">
+      <div class="rc-block">
+        <label>Curvature</label>
+        <div class="rotate-controls">
+          <button class="rotate-btn" id="curve-down" aria-label="Curve down">
+            <svg viewBox="0 0 18 18" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 3v12"/><path d="M4 10l5 5 5-5"/>
+            </svg>
+          </button>
+          <span class="rotate-val" id="curve-val">0</span>
+          <button class="rotate-btn" id="curve-up" aria-label="Curve up">
+            <svg viewBox="0 0 18 18" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 15V3"/><path d="M4 8l5-5 5 5"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="toggle-wrap">
+        <span>Random</span>
+        <label class="toggle">
+          <input type="checkbox" id="curve-random">
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Size</label>
+      <div class="size-row">
+        <div class="size-slider-wrap">
+          <input type="range" id="size" min="14" max="200" value="100">
+        </div>
+        <span class="size-val" id="size-val">100</span>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="field">
+      <label>Colors</label>
+      <div class="color-row">
+        <div class="color-swatch-wrap">
+          <span>Text</span>
+          <input type="color" id="text-color" value="#000000">
+        </div>
+        <div class="color-swatch-wrap" id="highlight-row">
+          <span>Highlight</span>
+          <input type="color" id="highlight-color" value="#edfe53">
+        </div>
+        <div class="color-swatch-wrap">
+          <span>Background</span>
+          <input type="color" id="bg-color" value="#ffffff">
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="field" id="save-image-field">
+      <div class="save-header">
+        <label>Save Image</label>
+        <svg viewBox="0 0 18 18" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 11.5v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-3"/>
+          <path d="M9 2v9"/>
+          <path d="M5.5 7.5L9 11l3.5-3.5"/>
+        </svg>
+      </div>
+      <div class="export-btns">
+        <button class="btn" id="export-png-btn">PNG</button>
+        <button class="btn" id="export-svg-btn">SVG</button>
+      </div>
+      <div class="toggle-wrap left-label">
+        <span>Include Background?</span>
+        <label class="toggle">
+          <input type="checkbox" id="export-bg">
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+    </div>
   </div>
 
-  <div class="field">
-    <label>Export</label>
-    <div class="export-btns">
-      <button class="btn" id="export-png-btn">PNG</button>
-      <button class="btn" id="export-svg-btn">SVG</button>
-    </div>
-    <div class="toggle-wrap">
-      <span>Include background?</span>
-      <label class="toggle">
-        <input type="checkbox" id="export-bg" checked>
-        <span class="toggle-track"></span>
-      </label>
-    </div>
-  </div>
-
-  <div class="btn-group">
-    <button class="btn" id="undo-btn">Undo</button>
-    <button class="btn" id="clear-btn">Clear Canvas</button>
+  <div id="sidebar-footer">
+    <button class="btn-undo" id="undo-btn">
+      <svg viewBox="0 0 18 18" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 5.5h8a4 4 0 0 1 0 8H6.5"/>
+        <path d="M6 2.5l-3 3 3 3"/>
+      </svg>
+      <span>Undo</span>
+    </button>
+    <button class="btn-reset" id="clear-btn">Reset Canvas</button>
   </div>
 </div>
 
