@@ -1441,19 +1441,25 @@ exportSvgBtn.addEventListener('click', async () => {
   const svgWordLen = (textInput.value || 'FUCK').length;
   ctx.textBaseline = 'middle';
 
-  // Each path rendered as a unit (highlight then letters) so newer layers sit on top
+  // Each path rendered as a unit; within each path, each word group is a <g>
   for (const { letters, highlight, applyScale, size, font, color } of completedPaths) {
     const pathSize = size || fallbackSize;
-    const total = letters.length;
+    const total    = letters.length;
+    const numWords = Math.ceil(total / svgWordLen);
 
-    // highlight polygons
-    if (highlight) {
-      ctx.font = `${pathSize}px ${font || currentFont}`;
-      const svgHlM = ctx.measureText((textInput.value || 'FUCK').toUpperCase());
-      const svgHTop = svgHlM.actualBoundingBoxAscent, svgHBot = svgHlM.actualBoundingBoxDescent;
+    ctx.font = `${pathSize}px ${font || currentFont}`;
+    const svgHlM  = ctx.measureText((textInput.value || 'FUCK').toUpperCase());
+    const svgHTop = svgHlM.actualBoundingBoxAscent;
+    const svgHBot = svgHlM.actualBoundingBoxDescent;
 
-      for (let wi = 0; wi < Math.ceil(total / svgWordLen); wi++) {
-        const start = wi * svgWordLen, end = Math.min(start + svgWordLen, total);
+    for (let wi = 0; wi < numWords; wi++) {
+      const start = wi * svgWordLen;
+      const end   = Math.min(start + svgWordLen, total);
+
+      parts.push('<g>');
+
+      // Highlight polygon for this word group
+      if (highlight) {
         const pts = [], botPts = [];
         for (let i = start; i < end; i++) {
           const { x, y, angle, w } = letters[i];
@@ -1466,21 +1472,25 @@ exportSvgBtn.addEventListener('click', async () => {
           if (i === start) { pts.push(tw(lx,-svgHTop)); botPts.push(tw(lx,svgHBot)); }
           pts.push(tw(rx,-svgHTop)); botPts.push(tw(rx,svgHBot));
         }
-        if (!pts.length) continue;
-        const allPts = [...pts, ...[...botPts].reverse()].join(' ');
-        parts.push(`<polygon points="${allPts}" fill="${highlight}"/>`);
+        if (pts.length) {
+          const allPts = [...pts, ...[...botPts].reverse()].join(' ');
+          parts.push(`<polygon points="${allPts}" fill="${highlight}"/>`);
+        }
       }
-    }
 
-    // letter paths
-    for (let i = 0; i < total; i++) {
-      const { char, w, x, y, angle } = letters[i];
-      const distFromEnd = total - 1 - i;
-      const scale = applyScale ? Math.max(0, 1 - distFromEnd * 0.025) : 1;
-      if (scale <= 0) continue;
-      parts.push(letterToSVG(char, w, x, y, angle, scale, color, pathSize, font));
+      // Letters for this word group
+      for (let i = start; i < end; i++) {
+        const { char, w, x, y, angle } = letters[i];
+        const distFromEnd = total - 1 - i;
+        const scale = applyScale ? Math.max(0, 1 - distFromEnd * 0.025) : 1;
+        if (scale <= 0) continue;
+        parts.push(letterToSVG(char, w, x, y, angle, scale, color, pathSize, font));
+      }
+
+      parts.push('</g>');
     }
   }
+
   for (const { char, w, x, y, scale, color, size, font } of stampLetters) {
     parts.push(letterToSVG(char, w, x, y, 0, scale, color, size || fallbackSize, font));
   }
