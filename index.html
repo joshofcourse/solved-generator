@@ -328,20 +328,68 @@
     line-height: 1.05;
     color: #fff;
   }
-  input[type=color] {
-    -webkit-appearance: none;
-    appearance: none;
+  .color-swatch {
     width: 32px;
     height: 32px;
     flex-shrink: 0;
     border: 1px solid #545454;
     border-radius: 4px;
-    padding: 2px;
-    background: none;
     cursor: pointer;
+    position: relative;
   }
-  input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
-  input[type=color]::-webkit-color-swatch { border: none; border-radius: 2px; }
+  .color-swatch:hover { border-color: #888; }
+
+  /* ── Hex picker popup ───────────────────────────────────── */
+  .hex-picker {
+    display: none;
+    position: fixed;
+    z-index: 999;
+    background: #1a1a1a;
+    border: 1px solid #444;
+    border-radius: 8px;
+    padding: 12px;
+    width: 148px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+    flex-direction: column;
+    gap: 8px;
+  }
+  .hex-picker.open { display: flex; }
+  .hex-picker-preview {
+    width: 100%;
+    height: 56px;
+    border-radius: 4px;
+    border: 1px solid #333;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  .hex-picker-preview:hover { border-color: #888; }
+  .hex-picker-preview input[type=color] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    border: none;
+    padding: 0;
+  }
+  .hex-picker-input {
+    width: 100%;
+    background: #111;
+    border: 1px solid #444;
+    border-radius: 4px;
+    color: #fff;
+    font-family: 'Selecta', monospace;
+    font-weight: 400;
+    font-size: 14px;
+    padding: 6px 8px;
+    text-transform: uppercase;
+    outline: none;
+    letter-spacing: 0.08em;
+    text-align: center;
+  }
+  .hex-picker-input:focus { border-color: #888; }
 
   /* ── Save Image ─────────────────────────────────────────── */
   #save-image-field { gap: 12px; }
@@ -519,16 +567,24 @@
       <div class="color-row">
         <div class="color-swatch-wrap">
           <span>Text</span>
-          <input type="color" id="text-color" value="#000000">
+          <div class="color-swatch" id="text-color-swatch" style="background:#000000"></div>
         </div>
         <div class="color-swatch-wrap" id="highlight-row">
           <span>Highlight</span>
-          <input type="color" id="highlight-color" value="#edfe53">
+          <div class="color-swatch" id="highlight-color-swatch" style="background:#edfe53"></div>
         </div>
         <div class="color-swatch-wrap">
           <span>Background</span>
-          <input type="color" id="bg-color" value="#ffffff">
+          <div class="color-swatch" id="bg-color-swatch" style="background:#ffffff"></div>
         </div>
+      </div>
+
+      <!-- Hex picker popup (shared, repositioned on open) -->
+      <div class="hex-picker" id="hex-picker">
+        <div class="hex-picker-preview" id="hex-picker-preview" title="Click to open color picker">
+          <input type="color" id="hex-picker-native" tabindex="-1">
+        </div>
+        <input class="hex-picker-input" id="hex-picker-input" maxlength="7" spellcheck="false">
       </div>
     </div>
 
@@ -586,9 +642,74 @@ const sizeSlider   = document.getElementById('size');
 const sizeVal      = document.getElementById('size-val');
 const clearBtn     = document.getElementById('clear-btn');
 const undoBtn      = document.getElementById('undo-btn');
-const textColorPicker     = document.getElementById('text-color');
-const bgColorPicker       = document.getElementById('bg-color');
-const highlightColorPicker = document.getElementById('highlight-color');
+// ── Custom hex color pickers ──────────────────────────────────────────────────
+function makeColorPicker(swatchId, initialHex) {
+  const swatch = document.getElementById(swatchId);
+  let _value = initialHex.toLowerCase();
+  const picker = {
+    get value() { return _value; },
+    set value(v) { _value = v.toLowerCase(); swatch.style.background = v; },
+    _listeners: [],
+    addEventListener(evt, fn) { this._listeners.push({ evt, fn }); },
+    _fire(evt) { this._listeners.filter(l => l.evt === evt).forEach(l => l.fn()); }
+  };
+  swatch.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openHexPicker(swatch, picker);
+  });
+  return picker;
+}
+
+const hexPickerEl    = document.getElementById('hex-picker');
+const hexPreviewEl   = document.getElementById('hex-picker-preview');
+const hexInputEl     = document.getElementById('hex-picker-input');
+let   activePicker   = null;
+
+function openHexPicker(swatch, picker) {
+  activePicker = picker;
+  // Position popup to the right of the swatch
+  const r = swatch.getBoundingClientRect();
+  hexPickerEl.style.top  = `${r.top}px`;
+  hexPickerEl.style.left = `${r.right + 8}px`;
+  hexPreviewEl.style.background = picker.value;
+  hexNativeEl.value = picker.value;
+  hexInputEl.value = picker.value.toUpperCase();
+  hexPickerEl.classList.add('open');
+  hexInputEl.focus();
+  hexInputEl.select();
+}
+
+const hexNativeEl = document.getElementById('hex-picker-native');
+
+hexNativeEl.addEventListener('input', () => {
+  const v = hexNativeEl.value;
+  hexPreviewEl.style.background = v;
+  hexInputEl.value = v.toUpperCase();
+  activePicker.value = v;
+  activePicker._fire('input');
+});
+
+hexInputEl.addEventListener('input', () => {
+  const v = hexInputEl.value.trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(v)) {
+    hexPreviewEl.style.background = v;
+    hexNativeEl.value = v;
+    activePicker.value = v;
+    activePicker._fire('input');
+  }
+});
+
+hexInputEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === 'Escape') hexPickerEl.classList.remove('open');
+});
+
+document.addEventListener('click', (e) => {
+  if (!hexPickerEl.contains(e.target)) hexPickerEl.classList.remove('open');
+});
+
+const textColorPicker      = makeColorPicker('text-color-swatch',      '#000000');
+const bgColorPicker        = makeColorPicker('bg-color-swatch',        '#ffffff');
+const highlightColorPicker = makeColorPicker('highlight-color-swatch', '#edfe53');
 let currentFont = 'SelectaBlack';
 
 let W, H;
@@ -1166,6 +1287,7 @@ textColorPicker.addEventListener('input', () => {
   stampLetters.forEach(l => l.color = c);
   render();
 });
+
 bgColorPicker.addEventListener('input', () => {
   document.body.style.background = bgColorPicker.value;
   render();
@@ -1319,40 +1441,38 @@ exportSvgBtn.addEventListener('click', async () => {
   const svgWordLen = (textInput.value || 'FUCK').length;
   ctx.textBaseline = 'middle';
 
-  // highlight polygons — use each path's stored size
-  for (const { letters, highlight, applyScale: hlScale, size, font } of completedPaths) {
-    if (!highlight) continue;
+  // Each path rendered as a unit (highlight then letters) so newer layers sit on top
+  for (const { letters, highlight, applyScale, size, font, color } of completedPaths) {
     const pathSize = size || fallbackSize;
-    ctx.font = `${pathSize}px ${font || currentFont}`;
-    const svgHlM = ctx.measureText((textInput.value || 'FUCK').toUpperCase());
-    const svgHTop = svgHlM.actualBoundingBoxAscent, svgHBot = svgHlM.actualBoundingBoxDescent;
-
     const total = letters.length;
-    for (let wi = 0; wi < Math.ceil(total / svgWordLen); wi++) {
-      const start = wi * svgWordLen, end = Math.min(start + svgWordLen, total);
-      const pts = [];
-      const botPts = [];
-      for (let i = start; i < end; i++) {
-        const { x, y, angle, w } = letters[i];
-        const s = hlScale ? Math.max(0, 1 - (total - 1 - i) * 0.025) : 1;
-        if (s <= 0) continue;
-        const cos_a = Math.cos(angle), sin_a = Math.sin(angle);
-        const tw = (lx, ly) => `${(x+(lx*cos_a-ly*sin_a)*s).toFixed(2)},${(y+(lx*sin_a+ly*cos_a)*s).toFixed(2)}`;
-        const lx = (i === start)   ? -w/2 : -w/2 - EXTRA_SPACE/2;
-        const rx = (i === end - 1) ?  w/2 :  w/2 + EXTRA_SPACE/2;
-        if (i === start) { pts.push(tw(lx,-svgHTop)); botPts.push(tw(lx,svgHBot)); }
-        pts.push(tw(rx,-svgHTop)); botPts.push(tw(rx,svgHBot));
+
+    // highlight polygons
+    if (highlight) {
+      ctx.font = `${pathSize}px ${font || currentFont}`;
+      const svgHlM = ctx.measureText((textInput.value || 'FUCK').toUpperCase());
+      const svgHTop = svgHlM.actualBoundingBoxAscent, svgHBot = svgHlM.actualBoundingBoxDescent;
+
+      for (let wi = 0; wi < Math.ceil(total / svgWordLen); wi++) {
+        const start = wi * svgWordLen, end = Math.min(start + svgWordLen, total);
+        const pts = [], botPts = [];
+        for (let i = start; i < end; i++) {
+          const { x, y, angle, w } = letters[i];
+          const s = applyScale ? Math.max(0, 1 - (total - 1 - i) * 0.025) : 1;
+          if (s <= 0) continue;
+          const cos_a = Math.cos(angle), sin_a = Math.sin(angle);
+          const tw = (lx, ly) => `${(x+(lx*cos_a-ly*sin_a)*s).toFixed(2)},${(y+(lx*sin_a+ly*cos_a)*s).toFixed(2)}`;
+          const lx = (i === start)   ? -w/2 : -w/2 - EXTRA_SPACE/2;
+          const rx = (i === end - 1) ?  w/2 :  w/2 + EXTRA_SPACE/2;
+          if (i === start) { pts.push(tw(lx,-svgHTop)); botPts.push(tw(lx,svgHBot)); }
+          pts.push(tw(rx,-svgHTop)); botPts.push(tw(rx,svgHBot));
+        }
+        if (!pts.length) continue;
+        const allPts = [...pts, ...[...botPts].reverse()].join(' ');
+        parts.push(`<polygon points="${allPts}" fill="${highlight}"/>`);
       }
-      if (!pts.length) continue;
-      const allPts = [...pts, ...[...botPts].reverse()].join(' ');
-      parts.push(`<polygon points="${allPts}" fill="${highlight}"/>`);
     }
-  }
 
-  // letter paths
-  for (const { letters, font, color, applyScale, size } of completedPaths) {
-    const pathSize = size || fallbackSize;
-    const total = letters.length;
+    // letter paths
     for (let i = 0; i < total; i++) {
       const { char, w, x, y, angle } = letters[i];
       const distFromEnd = total - 1 - i;
